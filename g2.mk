@@ -32,10 +32,15 @@ PRODUCT_PACKAGES += \
         VisualizationWallpapers \
         librs_jni
 
+# Enable Torch
+PRODUCT_PACKAGES += Torch
+
+# Ramdisk
 PRODUCT_COPY_FILES += \
         $(LOCAL_PATH)/init.g2-common.rc:root/init.g2-common.rc \
         $(LOCAL_PATH)/init.g2.usb.rc:root/init.g2.usb.rc \
-        $(LOCAL_PATH)/ueventd.g2.rc:root/ueventd.g2.rc
+        $(LOCAL_PATH)/ueventd.g2.rc:root/ueventd.g2.rc \
+        $(LOCAL_PATH)/fstab.g2:root/fstab.g2
 
 #Recovery files
 PRODUCT_COPY_FILES += \
@@ -44,12 +49,18 @@ PRODUCT_COPY_FILES += \
 PRODUCT_COPY_FILES += \
         $(LOCAL_PATH)/twrp.fstab:recovery/root/etc/twrp.fstab
 
+# Audio SND SOC Config
+PRODUCT_COPY_FILES += \
+	    $(LOCAL_PATH)/snd_soc_msm_Taiko:system/etc/snd_soc_msm/snd_soc_msm_Taiko
+
+# Audio Policy Config
 PRODUCT_COPY_FILES += \
 	$(LOCAL_PATH)/audio_policy.conf:system/etc/audio_policy.conf
 
 PRODUCT_COPY_FILES += \
 	$(LOCAL_PATH)/qosmgr_rules.xml:system/etc/qosmgr_rules.xml
 
+# Media
 PRODUCT_COPY_FILES += \
 	$(LOCAL_PATH)/media_profiles.xml:system/etc/media_profiles.xml \
 	$(LOCAL_PATH)/media_codecs.xml:system/etc/media_codecs.xml
@@ -59,11 +70,24 @@ PRODUCT_COPY_FILES += \
 
 # Prebuilt input device calibration files
 PRODUCT_COPY_FILES += \
-	$(LOCAL_PATH)/touch_dev.idc:system/usr/idc/touch_dev.idc 
+	$(LOCAL_PATH)/touch_dev.idc:system/usr/idc/touch_dev.idc
+
+# Non-Ramdisk Init Scripts
+PRODUCT_COPY_FILES += \
+	$(LOCAL_PATH)/scripts/kickstart_checker.sh:system/etc/kickstart_checker.sh \
+	$(LOCAL_PATH)/scripts/init.g2.bt.sh:system/etc/init.g2.bt.sh \
+	$(LOCAL_PATH)/scripts/init.qcom.mdm_links.sh:system/etc/init.qcom.mdm_links.sh \
+ 	$(LOCAL_PATH)/scripts/init.qcom.modem_links.sh:system/etc/init.qcom.modem_links.sh
+
+# Liblight
+PRODUCT_PACKAGES += \
+	lights.msm8960
 
 # These are the hardware-specific features
 PRODUCT_COPY_FILES += \
 	frameworks/native/data/etc/handheld_core_hardware.xml:system/etc/permissions/handheld_core_hardware.xml \
+	frameworks/native/data/etc/android.hardware.camera.autofocus.xml:system/etc/permissions/android.hardware.camera.autofocus.xml \
+	frameworks/native/data/etc/android.hardware.camera.xml:system/etc/permissions/android.hardware.camera.xml \
 	frameworks/native/data/etc/android.hardware.camera.flash-autofocus.xml:system/etc/permissions/android.hardware.camera.flash-autofocus.xml \
 	frameworks/native/data/etc/android.hardware.camera.front.xml:system/etc/permissions/android.hardware.camera.front.xml \
 	frameworks/native/data/etc/android.hardware.location.gps.xml:system/etc/permissions/android.hardware.location.gps.xml \
@@ -76,7 +100,6 @@ PRODUCT_COPY_FILES += \
 	frameworks/native/data/etc/android.hardware.touchscreen.multitouch.jazzhand.xml:system/etc/permissions/android.hardware.touchscreen.multitouch.jazzhand.xml \
 	frameworks/native/data/etc/android.software.sip.voip.xml:system/etc/permissions/android.software.sip.voip.xml \
 	frameworks/native/data/etc/android.hardware.usb.accessory.xml:system/etc/permissions/android.hardware.usb.accessory.xml \
-	frameworks/native/data/etc/android.hardware.telephony.gsm.xml:system/etc/permissions/android.hardware.telephony.gsm.xml \
 	frameworks/native/data/etc/android.hardware.audio.low_latency.xml:system/etc/permissions/android.hardware.audio.low_latency.xml \
 	frameworks/native/data/etc/android.hardware.bluetooth_le.xml:system/etc/permissions/android.hardware.bluetooth_le.xml
 
@@ -133,6 +156,10 @@ PRODUCT_PROPERTY_OVERRIDES += \
 	ro.telephony.ril_class=LgeLteRIL \
 	ro.telephony.ril.v3=qcomdsds
 
+# QC RIL path for rild
+PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
+    rild.libpath=/system/lib/libril-qc-qmi-1.so 
+
 #Upto 3 layers can go through overlays
 PRODUCT_PROPERTY_OVERRIDES += persist.hwc.mdpcomp.enable=true
 
@@ -182,6 +209,12 @@ PRODUCT_PACKAGES += \
 	libgps.utils \
 	gps.msm8974
 
+PRODUCT_PACKAGES += \
+	bdAddrLoader \
+	libwfcu \
+	conn_init \
+	wifimac
+
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
 	rild.libpath=/system/lib/libril-qc-qmi-1.so
 
@@ -190,7 +223,8 @@ PRODUCT_PROPERTY_OVERRIDES += \
 
 PRODUCT_PROPERTY_OVERRIDES += \
 	wifi.interface=wlan0 \
-	wifi.supplicant_scan_interval=15
+	wifi.supplicant_scan_interval=15 \
+	persist.radio.kickstart=on
 
 # Enable AAC 5.1 output
 PRODUCT_PROPERTY_OVERRIDES += \
@@ -208,3 +242,12 @@ PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
 
 PRODUCT_COPY_FILES += \
 	$(LOCAL_PATH)/fetch-swv:system/bin/fetch-swv
+
+BOARD_WLAN_DEVICE_REV := bcm4330_b2
+WIFI_BAND := 802_11_ABG
+$(call inherit-product-if-exists, hardware/broadcom/wlan/bcmdhd/firmware/bcm4330/device-bcm.mk)
+
+$(call inherit-product, frameworks/native/build/phone-xhdpi-2048-dalvik-heap.mk)
+
+## (2) Also get non-open-source specific aspects if available
+$(call inherit-product-if-exists, vendor/lge/d800-common/d800-common-vendor.mk)
