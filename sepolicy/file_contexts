@@ -91,7 +91,7 @@
 /system/bin/ks                   u:object_r:kickstart_exec:s0
 /system/bin/qcks                 u:object_r:kickstart_exec:s0
 /system/etc/kickstart_checker.sh u:object_r:kickstart_exec:s0
-/system/etc/init.geehrc.bt.sh    u:object_r:bluetooth_loader_exec:s0
+/system/etc/init.g2.bt.sh    u:object_r:bluetooth_loader_exec:s0
 /system/bin/bdAddrLoader         u:object_r:bluetooth_loader_exec:s0
 
 # misc, "persist" data
