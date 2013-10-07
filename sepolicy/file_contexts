@@ -67,6 +67,7 @@
 /dev/block/mmcblk0p1[234]       u:object_r:efs_block_device:s0
 
 # Data labeling
+/data(/.*)?                    u:object_r:system_data_file:s0
 /data/audio(/.*)?              u:object_r:audio_data_file:s0
 /data/misc/audio(/.*)?         u:object_r:audio_data_file:s0
 /data/nfc(/.*)?                u:object_r:nfc_data_file:s0
@@ -75,8 +76,10 @@
 /data/misc/playready(/.*)?     u:object_r:drm_data_file:s0
 /data/misc/tzapps(/.*)?        u:object_r:tee_data_file:s0
 /data/system/sensors(/.*)?     u:object_r:sensors_data_file:s0
+/data/lost\+found               u:object_r:rootfs:s0
 
 # System binaries
+/system(/.*)?                    u:object_r:system_file:s0
 /system/bin/rmt_storage          u:object_r:rmt_exec:s0
 /system/bin/thermald             u:object_r:thermald_exec:s0
 /system/bin/mpdecision           u:object_r:mpdecision_exec:s0
@@ -95,7 +98,7 @@
 /system/bin/bdAddrLoader         u:object_r:bluetooth_loader_exec:s0
 
 # misc, "persist" data
-/dev/block/mmcblk0p18            u:object_r:persist_block_device:s0
+/dev/block/mmcblk0p14            u:object_r:persist_block_device:s0
 # Persist firmware filesystem
 /persist(/.*)?                   u:object_r:persist_file:s0
 /sns(/.*)?                       u:object_r:persist_sensors_file:s0
