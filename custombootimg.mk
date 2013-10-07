@@ -1,46 +1,59 @@
 LOCAL_PATH := $(call my-dir)
 
-uncompressed_ramdisk := $(PRODUCT_OUT)/ramdisk.cpio
-$(uncompressed_ramdisk): $(INSTALLED_RAMDISK_TARGET)
-	zcat $< > $@
+## THIS IS A DEFAULT: YOU SHOULD OVERRIDE IT FROM THE DEVICE-SPECIFIC
+## BoardConfig. Check the kernel's arch/arm/boot/dts/ path for possible
+## values.
+G2_DTS_TARGET ?= msm8974-g2-open_com
 
-#INITSH := device/lge/d800-common/root/init.sh
-#BOOTREC_DEVICE := $(PRODUCT_OUT)/recovery/bootrec-device
 
+## Don't change anything under here. The variables are named G2_whatever
+## on purpose, to avoid conflicts with similarly named variables at other
+## parts of the build environment
+
+## Imported from the original makefile...
+KERNEL_CONFIG := $(KERNEL_OUT)/.config
+G2_DTS_NAMES := msm8974
+
+G2_DTS_FILES = $(wildcard $(TOP)/$(TARGET_KERNEL_SOURCE)/arch/arm/boot/dts/$(G2_DTS_TARGET)/*.dts)
+G2_DTS_FILE = $(lastword $(subst /, ,$(1)))
+DTB_FILE = $(addprefix $(KERNEL_OUT)/arch/arm/boot/,$(patsubst %.dts,%.dtb,$(call G2_DTS_FILE,$(1))))
+ZIMG_FILE = $(addprefix $(KERNEL_OUT)/arch/arm/boot2/,$(patsubst %.dts,%-zImage,$(call G2_DTS_FILE,$(1))))
+KERNEL_ZIMG = $(KERNEL_OUT)/arch/arm/boot/zImage
+DTC = $(KERNEL_OUT)/scripts/dtc/dtc
+
+define append-g2-dtb
+mkdir -p $(KERNEL_OUT)/arch/arm/boot;\
+$(foreach G2_DTS_NAME, $(G2_DTS_NAMES), \
+   $(foreach d, $(G2_DTS_FILES), \
+      $(DTC) -p 1024 -O dtb -o $(call DTB_FILE,$(d)) $(d); \
+      cat $(KERNEL_ZIMG) $(call DTB_FILE,$(d)) > $(call ZIMG_FILE,$(d));))
+endef
+
+
+## Build and run dtbtool
 DTBTOOL := $(HOST_OUT_EXECUTABLES)/dtbTool$(HOST_EXECUTABLE_SUFFIX)
 INSTALLED_DTIMAGE_TARGET := $(PRODUCT_OUT)/dt.img
 
-INSTALLED_BOOTIMAGE_TARGET := $(PRODUCT_OUT)/boot.img
-$(INSTALLED_BOOTIMAGE_TARGET): $(PRODUCT_OUT)/kernel $(uncompressed_ramdisk) $(recovery_uncompressed_ramdisk) $(INSTALLED_RAMDISK_TARGET) $(INITSH) $(BOOTREC_DEVICE) $(PRODUCT_OUT)/utilities/busybox $(MKBOOTIMG) $(MINIGZIP) $(INTERNAL_BOOTIMAGE_FILES) $(DTBTOOL)
-	$(call pretty,"Boot image: $@")
-
-	$(hide) rm -fr $(PRODUCT_OUT)/root
-	$(hide) mkdir -p $(PRODUCT_OUT)/root/sbin
-
-	$(hide) mv $(PRODUCT_OUT)/root/logo.rle $(PRODUCT_OUT)/root/logo.rle
-	$(hide) cp $(uncompressed_ramdisk) $(PRODUCT_OUT)/root/sbin/
-	$(hide) cp $(recovery_uncompressed_ramdisk) $(PRODUCT_OUT)/root/sbin/
-	$(hide) cp $(PRODUCT_OUT)/utilities/busybox $(PRODUCT_OUT)/root/sbin/
-
-#	$(hide) cp $(INITSH) $(PRODUCT_OUT)/root/sbin/init.sh
-#	$(hide) chmod 755 $(PRODUCT_OUT)/root/sbin/init.sh
-#	$(hide) ln -s sbin/init.sh $(PRODUCT_OUT)/root/init
-#	$(hide) cp $(BOOTREC_DEVICE) $(PRODUCT_OUT)/root/sbin/
-
-	$(hide) $(MKBOOTFS) $(PRODUCT_OUT)/root/ > $(PRODUCT_OUT)/root.cpio
-	$(hide) cat $(PRODUCT_OUT)/root.cpio | gzip > $(PRODUCT_OUT)/root.fs
-
+$(INSTALLED_DTIMAGE_TARGET): $(DTBTOOL) $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
+	@echo -e ${CL_CYN}"Start DT image: $@"${CL_RST}
+	$(call append-g2-dtb)
 	$(call pretty,"Target dt image: $(INSTALLED_DTIMAGE_TARGET)")
 	$(hide) $(DTBTOOL) -o $(INSTALLED_DTIMAGE_TARGET) -s $(BOARD_KERNEL_PAGESIZE) -p $(KERNEL_OUT)/scripts/dtc/ $(KERNEL_OUT)/arch/arm/boot/
+	@echo -e ${CL_CYN}"Made DT image: $@"${CL_RST}
 
-	$(hide) $(MKBOOTIMG) --kernel $(PRODUCT_OUT)/kernel --ramdisk $(PRODUCT_OUT)/root.fs --cmdline "$(BOARD_KERNEL_CMDLINE)" --base $(BOARD_KERNEL_BASE) --pagesize $(BOARD_KERNEL_PAGESIZE) --dt $(INSTALLED_DTIMAGE_TARGET) $(BOARD_MKBOOTIMG_ARGS) -o $(INSTALLED_BOOTIMAGE_TARGET)
 
-INSTALLED_RECOVERYIMAGE_TARGET := $(PRODUCT_OUT)/recovery.img
-$(INSTALLED_RECOVERYIMAGE_TARGET): $(MKBOOTIMG) \
-	$(recovery_ramdisk) \
-	$(recovery_kernel)
-	$(call pretty,"Target dt image: $(INSTALLED_DTIMAGE_TARGET)")
-	$(hide) $(DTBTOOL) -o $(INSTALLED_DTIMAGE_TARGET) -s $(BOARD_KERNEL_PAGESIZE) -p $(KERNEL_OUT)/scripts/dtc/ $(KERNEL_OUT)/arch/arm/boot/
-	@echo ----- Making recovery image ------
-	$(hide) mkbootimg --kernel $(PRODUCT_OUT)/kernel --ramdisk $(PRODUCT_OUT)/ramdisk-recovery.img --cmdline "$(BOARD_KERNEL_CMDLINE)" --base $(BOARD_KERNEL_BASE) --pagesize $(BOARD_KERNEL_PAGESIZE) --dt $(INSTALLED_DTIMAGE_TARGET)  $(BOARD_MKBOOTIMG_ARGS) -o $(INSTALLED_RECOVERYIMAGE_TARGET)
-	@echo ----- Made recovery image -------- $@
+## Overload bootimg generation: Same as the original, + --dt arg
+$(INSTALLED_BOOTIMAGE_TARGET): $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_FILES) $(INSTALLED_DTIMAGE_TARGET)
+	$(call pretty,"Target boot image: $@")
+	$(hide) $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) $(BOARD_MKBOOTIMG_ARGS) --dt $(INSTALLED_DTIMAGE_TARGET) --output $@
+	$(hide) $(call assert-max-image-size,$@,$(BOARD_BOOTIMAGE_PARTITION_SIZE),raw)
+	@echo -e ${CL_CYN}"Made boot image: $@"${CL_RST}
+
+## Overload recoveryimg generation: Same as the original, + --dt arg
+$(INSTALLED_RECOVERYIMAGE_TARGET): $(MKBOOTIMG) $(INSTALLED_DTIMAGE_TARGET) \
+		$(recovery_ramdisk) \
+		$(recovery_kernel)
+	@echo -e ${CL_CYN}"----- Making recovery image ------"${CL_RST}
+	$(hide) $(MKBOOTIMG) $(INTERNAL_RECOVERYIMAGE_ARGS) $(BOARD_MKBOOTIMG_ARGS) --dt $(INSTALLED_DTIMAGE_TARGET) --output $@
+	$(hide) $(call assert-max-image-size,$@,$(BOARD_RECOVERYIMAGE_PARTITION_SIZE),raw)
+	@echo -e ${CL_CYN}"Made recovery image: $@"${CL_RST}
