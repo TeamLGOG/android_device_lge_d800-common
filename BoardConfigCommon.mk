@@ -105,7 +105,7 @@ WIFI_DRIVER_FW_PATH_P2P     := "/etc/firmware/fw_bcmdhd_p2p.bin"
 
 BOARD_EGL_CFG := device/lge/d800-common/egl.cfg
 
-TARGET_QCOM_DISPLAY_VARIANT := caf
+TARGET_QCOM_DISPLAY_VARIANT := mdss
 USE_OPENGL_RENDERER := true
 TARGET_USES_ION := true
 TARGET_USES_OVERLAY := true
