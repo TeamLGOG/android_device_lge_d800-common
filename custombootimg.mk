@@ -17,7 +17,6 @@ $(INSTALLED_BOOTIMAGE_TARGET): $(PRODUCT_OUT)/kernel $(uncompressed_ramdisk) $(r
 	$(hide) rm -fr $(PRODUCT_OUT)/root
 	$(hide) mkdir -p $(PRODUCT_OUT)/root/sbin
 
-	$(hide) mv $(PRODUCT_OUT)/root/logo.rle $(PRODUCT_OUT)/root/logo.rle
 	$(hide) cp $(uncompressed_ramdisk) $(PRODUCT_OUT)/root/sbin/
 	$(hide) cp $(recovery_uncompressed_ramdisk) $(PRODUCT_OUT)/root/sbin/
 	$(hide) cp $(PRODUCT_OUT)/utilities/busybox $(PRODUCT_OUT)/root/sbin/
