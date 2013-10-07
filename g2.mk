@@ -247,6 +247,13 @@ PRODUCT_COPY_FILES += \
 
 BOARD_WLAN_DEVICE_REV := bcm4330_b2
 WIFI_BAND := 802_11_ABG
+
+# This hw ships locked, work around it with loki
+PRODUCT_PACKAGES += \
+loki.sh \
+loki_patch \
+loki_flash
+
 $(call inherit-product-if-exists, hardware/broadcom/wlan/bcmdhd/firmware/bcm4330/device-bcm.mk)
 
 $(call inherit-product, frameworks/native/build/phone-xhdpi-2048-dalvik-heap.mk)
